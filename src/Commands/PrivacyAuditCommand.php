@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BobKosse\DataSecurity\Commands;
 
+use BobKosse\DataSecurity\Attributes\Protect;
 use BobKosse\DataSecurity\Traits\HasPrivacy;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,7 @@ use ReflectionClass;
 class PrivacyAuditCommand extends Command
 {
     protected $signature = 'privacy:audit {scan?}';
+
     protected $description = 'Overview of all Eloquent models and their privacy settings';
 
     public function handle(): int
@@ -66,9 +68,8 @@ class PrivacyAuditCommand extends Command
 
             $fields = '-';
 
-            if ($usesTrait && $reflection->isInstantiable()) {
-                $instance = $reflection->newInstanceWithoutConstructor();
-                $fields = implode(', ', $instance->getPrivacyFields());
+            if ($usesTrait) {
+                $fields = implode(', ', $this->getPrivacyFieldsFromReflection($reflection));
             }
 
             $rows[] = [
@@ -87,6 +88,20 @@ class PrivacyAuditCommand extends Command
         $this->table(['Model', 'Has Privacy Trait', 'Privacy Fields'], $rows);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Get privacy fields from class reflection using the Protect attribute
+     */
+    protected function getPrivacyFieldsFromReflection(ReflectionClass $reflection): array
+    {
+        $attributes = $reflection->getAttributes(Protect::class);
+
+        if (empty($attributes)) {
+            return [];
+        }
+
+        return $attributes[0]->newInstance()->fields;
     }
 
     protected function resolveScanPath(string $scanOption): ?string

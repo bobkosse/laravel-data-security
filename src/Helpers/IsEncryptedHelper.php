@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace BobKosse\DataSecurity\Helpers;
 
-use Illuminate\Support\Facades\Crypt;
 use BobKosse\DataSecurity\Builders\PrivacyEloquentBuilder;
+use Illuminate\Support\Facades\Crypt;
 
 class IsEncryptedHelper
 {
@@ -30,7 +30,6 @@ class IsEncryptedHelper
     /**
      * Encrypt privacy fields in the given values array.
      *
-     * @param  PrivacyEloquentBuilder  $builder
      * @param  array<string, mixed>  $values
      * @return array<string, mixed>
      */
@@ -56,7 +55,6 @@ class IsEncryptedHelper
     /**
      * Encrypt privacy fields in the given values array.
      *
-     * @param  PrivacyEloquentBuilder  $builder
      * @param  array<int, array<string, mixed>>  $values
      * @return array<int, array<string, mixed>>
      */

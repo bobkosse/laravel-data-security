@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use BobKosse\DataSecurity\Attributes\Protect;
 use BobKosse\DataSecurity\Exceptions\PrivacyDecryptionException;
 use BobKosse\DataSecurity\Traits\HasPrivacy;
 use Illuminate\Database\Eloquent\Model;
@@ -31,6 +32,7 @@ beforeEach(function () {
     });
 });
 
+#[Protect(fields: ['name', 'email', 'address'])]
 class TestCustomer extends Model
 {
     use HasPrivacy;
@@ -40,12 +42,9 @@ class TestCustomer extends Model
     protected $fillable = [
         'name', 'email', 'address', 'internal_note',
     ];
-
-    protected $privacyFields = [
-        'name', 'email', 'address',
-    ];
 }
 
+#[Protect(fields: ['username', 'email'])]
 class User extends Model
 {
     use HasPrivacy;
@@ -55,21 +54,14 @@ class User extends Model
     protected $fillable = [
         'username', 'email',
     ];
-
-    protected $privacyFields = [
-        'username', 'email',
-    ];
 }
 
+#[Protect(fields: ['email'])]
 class NonModel
 {
     use HasPrivacy;
 
     public function __construct(public string $email) {}
-
-    protected $privacyFields = [
-        'email',
-    ];
 }
 
 it('encrypts sensitive data in the database', closure: function () {
@@ -181,7 +173,6 @@ it('should log an alert if HasPrivacy is used on User model', function () {
             return str_contains($message, 'Privacy is not active for this model');
         }));
 
-    // Act
     $model = new User;
     $model->getAttribute('any_key');
 });

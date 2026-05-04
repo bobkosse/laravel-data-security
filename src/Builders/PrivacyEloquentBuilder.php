@@ -14,7 +14,8 @@ class PrivacyEloquentBuilder extends Builder
 {
     private IsEncryptedHelper $isEncrypted;
 
-    public function __construct($query, IsEncryptedHelper $isEncrypted) {
+    public function __construct($query, IsEncryptedHelper $isEncrypted)
+    {
         $this->isEncrypted = $isEncrypted;
         $this->query = $query;
     }

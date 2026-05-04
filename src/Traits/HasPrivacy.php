@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BobKosse\DataSecurity\Traits;
 
+use BobKosse\DataSecurity\Attributes\Protect;
 use BobKosse\DataSecurity\Builders\PrivacyEloquentBuilder;
 use BobKosse\DataSecurity\Exceptions\PrivacyDecryptionException;
 use BobKosse\DataSecurity\Helpers\IsEncryptedHelper;
@@ -49,7 +50,7 @@ trait HasPrivacy
     {
         $privacyActive = $this instanceof Model && get_class($this) !== 'User';
 
-        if (! $privacyActive) {
+        if (! $privacyActive && config('app.debug', false)) {
             Log::alert('Privacy is not active for this model');
         }
 
@@ -71,7 +72,14 @@ trait HasPrivacy
      */
     public function getPrivacyFields(): array
     {
-        return $this->privacyFields ?? [];
+        $reflection = new \ReflectionClass($this);
+        $attributes = $reflection->getAttributes(Protect::class);
+
+        if (empty($attributes)) {
+            return [];
+        }
+
+        return $attributes[0]->newInstance()->fields;
     }
 
     /**
@@ -79,9 +87,9 @@ trait HasPrivacy
      */
     public function getAttribute($key): mixed
     {
-        $value = parent::getAttribute($key);
-
         if ($this->isPrivacyActive() && in_array($key, $this->getPrivacyFields(), true)) {
+            $value = parent::getAttribute($key);
+
             if ($value === null) {
                 return null;
             }
@@ -97,7 +105,7 @@ trait HasPrivacy
             }
         }
 
-        return $value;
+        return parent::getAttribute($key);
     }
 
     /**

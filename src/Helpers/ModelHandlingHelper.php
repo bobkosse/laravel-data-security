@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BobKosse\DataSecurity\Helpers;
 
+use BobKosse\DataSecurity\Attributes\Protect;
+use BobKosse\DataSecurity\Traits\HasPrivacy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
@@ -121,12 +123,14 @@ class ModelHandlingHelper
             return false;
         }
 
-        if (str_contains($contents, "protected \$privacyFields =")) {
-            $contents = $this->appendToExistingPrivacyFields($contents, $field);
+        // Check if the model already has a Protect attribute
+        if (preg_match('/#\[Protect\(fields:\s*\[(.*?)\]\)\]/s', $contents, $matches)) {
+            $contents = $this->updateProtectAttribute($contents, $field);
         } else {
-            $contents = $this->createPrivacyFieldsProperty($contents, $field);
+            $contents = $this->addProtectAttribute($contents, $field);
         }
 
+        $contents = $this->addProtectImport($contents);
         $contents = $this->addHasPrivacyImport($contents);
         $contents = $this->addHasPrivacyTrait($contents);
 
@@ -135,37 +139,61 @@ class ModelHandlingHelper
         return true;
     }
 
-    protected function appendToExistingPrivacyFields(string $contents, string $field): string
+    protected function updateProtectAttribute(string $contents, string $field): string
     {
-        $pattern = '/protected\s+\$privacyFields\s*=\s*\[(.*?)\];/s';
+        return preg_replace_callback(
+            '/#\[Protect\(fields:\s*\[(.*?)\]\)\]/s',
+            function (array $matches) use ($field): string {
+                $fieldsString = $matches[1];
 
-        return preg_replace_callback($pattern, function (array $matches) use ($field): string {
-            $body = $matches[1];
+                // Parse existing fields
+                preg_match_all("/['\"]([^'\"]+)['\"]/", $fieldsString, $existingMatches);
+                $existingFields = $existingMatches[1] ?? [];
 
-            preg_match_all("/['\"]([^'\"]+)['\"]/", $body, $existingFields);
-            $fields = $existingFields[1] ?? [];
+                // Add new field if not already present
+                if (! in_array($field, $existingFields, true)) {
+                    $existingFields[] = $field;
+                }
 
-            if (! in_array($field, $fields, true)) {
-                $fields[] = $field;
-            }
+                // Format fields
+                $formattedFields = array_map(
+                    static fn (string $item): string => "'{$item}'",
+                    $existingFields
+                );
 
-            $fields = array_values(array_unique($fields));
-
-            $formattedFields = array_map(
-                static fn (string $item): string => "        '{$item}',",
-                $fields
-            );
-
-            return "protected \$privacyFields = [\n".implode("\n", $formattedFields)."\n    ];";
-        }, $contents) ?? $contents;
+                return '#[Protect(fields: ['.implode(', ', $formattedFields).'])]';
+            },
+            $contents
+        ) ?? $contents;
     }
 
-    protected function createPrivacyFieldsProperty(string $contents, string $field): string
+    protected function addProtectAttribute(string $contents, string $field): string
     {
-        $pattern = '/class\s+\w+\s*(?:extends\s+[^{]+)?\{/';
+        $pattern = '/(class\s+\w+)/';
 
         return preg_replace_callback($pattern, function (array $matches) use ($field): string {
-            return $matches[0]."\n    protected \$privacyFields = [\n        '{$field}',\n    ];";
+            return "#[Protect(fields: ['{$field}'])]\n".$matches[1];
+        }, $contents, 1) ?? $contents;
+    }
+
+    protected function addProtectImport(string $contents): string
+    {
+        $import = 'use BobKosse\DataSecurity\Attributes\Protect;';
+
+        if (str_contains($contents, $import)) {
+            return $contents;
+        }
+
+        $pattern = '/(namespace\s+[^;]+;\s*)(.*?)(\r?\n\s*(?:#\[.*?\]\s*)?class\s+)/s';
+
+        return preg_replace_callback($pattern, function (array $matches) use ($import): string {
+            $beforeClass = $matches[2];
+
+            if (preg_match('/use\s+[^;]+;/', $beforeClass)) {
+                return $matches[1].trim($beforeClass)."\n".$import."\n".$matches[3];
+            }
+
+            return $matches[1].$import."\n\n".$matches[3];
         }, $contents, 1) ?? $contents;
     }
 
@@ -177,13 +205,13 @@ class ModelHandlingHelper
             return $contents;
         }
 
-        $pattern = '/(namespace\s+[^;]+;\s*)(.*?)(\r?\n\s*class\s+)/s';
+        $pattern = '/(namespace\s+[^;]+;\s*)(.*?)(\r?\n\s*(?:#\[.*?\]\s*)?class\s+)/s';
 
         return preg_replace_callback($pattern, function (array $matches) use ($import): string {
             $beforeClass = $matches[2];
 
             if (preg_match('/use\s+[^;]+;/', $beforeClass)) {
-                return $matches[1].trim($beforeClass)."\n".$import."\n\n".$matches[3];
+                return $matches[1].trim($beforeClass)."\n".$import."\n".$matches[3];
             }
 
             return $matches[1].$import."\n\n".$matches[3];
@@ -230,20 +258,19 @@ class ModelHandlingHelper
             return [];
         }
 
-        $instance = $reflection->newInstanceWithoutConstructor();
+        // Get privacy fields from the Protect attribute
+        $attributes = $reflection->getAttributes(Protect::class);
 
-        if(method_exists($instance, 'getPrivacyFields')) {
-            $fields = $instance->getPrivacyFields();
-        } else {
+        if (empty($attributes)) {
             return [];
         }
 
-        return is_array($fields) ? array_values($fields) : [];
+        return $attributes[0]->newInstance()->fields;
     }
 
     public function getModelFields(string $modelClass): array
     {
-        $model = new $modelClass();
+        $model = new $modelClass;
 
         return Schema::getColumnListing($model->getTable());
     }

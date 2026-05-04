@@ -3,20 +3,24 @@
 declare(strict_types=1);
 
 namespace BobKosse\DataSecurity\Commands;
-use BobKosse\DataSecurity\Helpers\ModelHandlingHelper;
+
 use BobKosse\DataSecurity\Helpers\IsEncryptedHelper;
+use BobKosse\DataSecurity\Helpers\ModelHandlingHelper;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PrivacyEncryptFieldCommand extends Command
 {
     protected $signature = 'privacy:encrypt-field';
+
     protected $description = 'Add an existing field to the encrypted fields list';
 
     private $modelHandlingHelper;
+
     private $isEncryptedHelper;
+
     public function __construct(ModelHandlingHelper $modelHandlingHelper, IsEncryptedHelper $isEncryptedHelper)
     {
         $this->modelHandlingHelper = $modelHandlingHelper;
@@ -32,8 +36,9 @@ class PrivacyEncryptFieldCommand extends Command
             $models = array_merge($models, $this->modelHandlingHelper->getModels($path));
         }
 
-        if(count($models) == 0) {
+        if (count($models) == 0) {
             $this->error('No models found');
+
             return self::FAILURE;
         }
         $model_name = $this->choice('Which model do you want to update?', $models);
@@ -43,13 +48,13 @@ class PrivacyEncryptFieldCommand extends Command
 
         $availableFields = array_values(array_filter(
             $this->modelHandlingHelper->getModelFields($model_name),
-            fn (string $field): bool =>
-                ! in_array($field, $excludedFields, true) &&
+            fn (string $field): bool => ! in_array($field, $excludedFields, true) &&
                 ! in_array($field, $privacyFields, true)
         ));
 
         if (count($availableFields) == 0) {
             $this->error('No valid fields available to encrypt.');
+
             return self::FAILURE;
         }
 
@@ -60,16 +65,18 @@ class PrivacyEncryptFieldCommand extends Command
 
         if ($this->modelHandlingHelper->fieldAlreadyExistsInPrivacyFields($model_name, $field)) {
             $this->error("Field {$field} already exists in privacyFields");
+
             return self::FAILURE;
         }
 
-        if(!Schema::hasColumn($model->getTable(), $field)) {
+        if (! Schema::hasColumn($model->getTable(), $field)) {
             $this->error("Field {$field} does not exist in database");
+
             return self::FAILURE;
         }
 
         $row = $model->where($field, '!=', null)->first();
-        if($row !== null && $this->isEncryptedHelper->isAlreadyEncrypted($row->$field)) {
+        if ($row !== null && $this->isEncryptedHelper->isAlreadyEncrypted($row->$field)) {
 
             if (! $this->confirm("Field {$field} already appears encrypted. Do you want to add it to privacyFields if {$model_name}?")) {
                 $this->error("Field {$field} is already encrypted.");
@@ -108,6 +115,7 @@ class PrivacyEncryptFieldCommand extends Command
             });
         } catch (\Throwable $e) {
             $this->error("Encryption failed: {$e->getMessage()}");
+
             return self::FAILURE;
         }
 
@@ -122,11 +130,10 @@ class PrivacyEncryptFieldCommand extends Command
         if (! in_array($field, $privacyFields, true)) {
             $privacyFields[] = $field;
         }
-        foreach($privacyFields as $field) {
-            $this->info('- ' . $field);
+        foreach ($privacyFields as $field) {
+            $this->info('- '.$field);
         }
 
         return self::SUCCESS;
     }
-
 }

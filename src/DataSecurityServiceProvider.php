@@ -22,7 +22,7 @@ class DataSecurityServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 PrivacyAuditCommand::class,
-                PrivacyEncryptFieldCommand::class
+                PrivacyEncryptFieldCommand::class,
             ]);
         }
 

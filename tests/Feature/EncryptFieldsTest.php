@@ -4,40 +4,58 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use BobKosse\DataSecurity\Helpers\ModelHandlingHelper;
-use BobKosse\DataSecurity\Helpers\IsEncryptedHelper;
 use BobKosse\DataSecurity\Commands\PrivacyEncryptFieldCommand;
-use BobKosse\DataSecurity\Traits\HasPrivacy;
-use Illuminate\Database\Eloquent\Model;
+use BobKosse\DataSecurity\Helpers\IsEncryptedHelper;
+use BobKosse\DataSecurity\Helpers\ModelHandlingHelper;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Mockery;
+use Tests\Feature\TmpEncryptModels\EncryptCustomer;
+use Tests\Feature\TmpEncryptModels\FailingEncryptModel;
+use Tests\Feature\TmpEncryptModels\NoPrivacyFieldsModel;
 
 beforeEach(function () {
+    // Definieer model bestanden die gebackupt moeten worden
+    $modelFiles = [
+        __DIR__.'/TmpEncryptModels/EncryptCustomer.php',
+        __DIR__.'/TmpEncryptModels/FailingEncryptModel.php',
+        __DIR__.'/TmpEncryptModels/NoPrivacyFieldsModel.php',
+        __DIR__.'/TmpEncryptModels/PrivateEmail.php',
+        __DIR__.'/TmpEncryptModels/EmptyFieldsModel.php',
+        __DIR__.'/TmpEncryptModels/EncryptPatient.php',
+    ];
+
+    // Maak backups en sla ze op in de test context
+    $this->originalModelFiles = [];
+    foreach ($modelFiles as $modelFile) {
+        if (file_exists($modelFile)) {
+            $this->originalModelFiles[$modelFile] = file_get_contents($modelFile);
+        }
+    }
+
     Schema::dropIfExists('encrypt_customers');
     Schema::dropIfExists('encrypt_patients');
     Schema::dropIfExists('encrypt_empty_table');
     Schema::dropIfExists('encrypt_failing_models');
     Schema::dropIfExists('private_emails');
 
-Schema::create('encrypt_empty_table', function (Blueprint $table) {
-    $table->id();
-    $table->string('email')->nullable();
-    $table->timestamps();
-});
-Schema::create('private_emails', function (Blueprint $table) {
+    Schema::create('encrypt_empty_table', function (Blueprint $table) {
         $table->id();
         $table->string('email')->nullable();
         $table->timestamps();
     });
-Schema::create('encrypt_failing_models', function (Blueprint $table) {
-    $table->id();
-    $table->string('email')->nullable();
-    $table->timestamps();
-});
+    Schema::create('private_emails', function (Blueprint $table) {
+        $table->id();
+        $table->string('email')->nullable();
+        $table->timestamps();
+    });
+    Schema::create('encrypt_failing_models', function (Blueprint $table) {
+        $table->id();
+        $table->string('email')->nullable();
+        $table->timestamps();
+    });
 
     Schema::create('encrypt_customers', function (Blueprint $table) {
         $table->id();
@@ -46,149 +64,6 @@ Schema::create('encrypt_failing_models', function (Blueprint $table) {
         $table->string('phone')->nullable();
         $table->timestamps();
     });
-
-    File::deleteDirectory(__DIR__.'/TmpEncryptModels');
-    File::ensureDirectoryExists(__DIR__.'/TmpEncryptModels');
-
-    File::put(__DIR__.'/TmpEncryptModels/PrivateEmail.php', <<<'PHP'
-<?php
-
-namespace Tests\Feature\TmpEncryptModels;
-
-use BobKosse\DataSecurity\Traits\HasPrivacy;
-use Illuminate\Database\Eloquent\Model;
-
-class PrivateEmail extends Model
-{
-    use HasPrivacy;
-
-    protected $table = 'private_emails';
-
-    protected $fillable = [
-        'email',
-    ];
-}
-PHP);
-
-    File::put(__DIR__.'/TmpEncryptModels/EncryptCustomer.php', <<<'PHP'
-<?php
-
-namespace Tests\Feature\TmpEncryptModels;
-
-use BobKosse\DataSecurity\Traits\HasPrivacy;
-use Illuminate\Database\Eloquent\Model;
-
-class EncryptCustomer extends Model
-{
-    use HasPrivacy;
-
-    protected $table = 'encrypt_customers';
-
-    protected $fillable = [
-        'name',
-        'email',
-        'phone',
-    ];
-
-    protected $privacyFields = [
-        'name',
-    ];
-}
-PHP);
-
-    File::put(__DIR__.'/TmpEncryptModels/EncryptPatient.php', <<<'PHP'
-<?php
-
-namespace Tests\Feature\TmpEncryptModels;
-
-use BobKosse\DataSecurity\Traits\HasPrivacy;
-use Illuminate\Database\Eloquent\Model;
-
-class EncryptPatient extends Model
-{
-    use HasPrivacy;
-
-    protected $table = 'encrypt_patients';
-
-    protected $fillable = [
-        'full_name',
-        'ssn',
-    ];
-
-    protected $privacyFields = [
-        'full_name',
-    ];
-}
-PHP);
-
-    File::put(__DIR__.'/TmpEncryptModels/NoPrivacyFieldsModel.php', <<<'PHP'
-<?php
-
-namespace Tests\Feature\TmpEncryptModels;
-
-use BobKosse\DataSecurity\Traits\HasPrivacy;
-use Illuminate\Database\Eloquent\Model;
-
-class NoPrivacyFieldsModel extends Model
-{
-    use HasPrivacy;
-
-    protected $table = 'encrypt_empty_table';
-
-    protected $fillable = [
-        'email',
-    ];
-}
-PHP);
-
-    File::put(__DIR__.'/TmpEncryptModels/EmptyFieldsModel.php', <<<'PHP'
-<?php
-
-namespace Tests\Feature\TmpEncryptModels;
-
-use Illuminate\Database\Eloquent\Model;
-
-class EmptyFieldsModel extends Model
-{
-    protected $table = 'encrypt_empty_table';
-
-    protected $fillable = [];
-}
-PHP);
-
-    File::put(__DIR__.'/TmpEncryptModels/FailingEncryptModel.php', <<<'PHP'
-<?php
-
-namespace Tests\Feature\TmpEncryptModels;
-
-use BobKosse\DataSecurity\Traits\HasPrivacy;
-use Illuminate\Database\Eloquent\Model;
-use RuntimeException;
-
-class FailingEncryptModel extends Model
-{
-    use HasPrivacy;
-
-    protected $table = 'encrypt_failing_models';
-
-    protected $fillable = [
-        'email',
-    ];
-
-    protected $privacyFields = [];
-
-    public static bool $failOnSave = false;
-
-    protected static function booted(): void
-    {
-        static::saving(function () {
-            if (static::$failOnSave) {
-                throw new RuntimeException('Simulated save failure');
-            }
-        });
-    }
-}
-PHP);
 
     require_once __DIR__.'/TmpEncryptModels/FailingEncryptModel.php';
     require_once __DIR__.'/TmpEncryptModels/EncryptCustomer.php';
@@ -199,7 +74,34 @@ PHP);
 });
 
 afterEach(function () {
-    File::deleteDirectory(__DIR__.'/TmpEncryptModels');
+    // Herstel alle model bestanden naar hun originele staat
+    if (isset($this->originalModelFiles)) {
+        foreach ($this->originalModelFiles as $modelFile => $originalContent) {
+            if (file_exists($modelFile)) {
+                file_put_contents($modelFile, $originalContent);
+            }
+        }
+    }
+
+    // Reset static properties
+    FailingEncryptModel::$failOnSave = false;
+
+    // Clear database tabellen
+    if (Schema::hasTable('encrypt_customers')) {
+        DB::table('encrypt_customers')->truncate();
+    }
+    if (Schema::hasTable('encrypt_empty_table')) {
+        DB::table('encrypt_empty_table')->truncate();
+    }
+    if (Schema::hasTable('encrypt_failing_models')) {
+        DB::table('encrypt_failing_models')->truncate();
+    }
+    if (Schema::hasTable('private_emails')) {
+        DB::table('private_emails')->truncate();
+    }
+
+    // Clear Mockery mocks
+    Mockery::close();
 });
 
 it('fails when no models are found', function () {
@@ -214,8 +116,8 @@ it('schould give a choice for what model to encrypt', function () {
     config()->set('data-security.paths', [__DIR__.'/TmpEncryptModels']);
 
     $this->artisan('privacy:encrypt-field')
-        ->expectsQuestion('Which model do you want to update?','Tests\Feature\TmpEncryptModels\EncryptCustomer')
-        ->expectsQuestion('Which field do you want to encrypt?','phone');
+        ->expectsQuestion('Which model do you want to update?', 'Tests\Feature\TmpEncryptModels\EncryptCustomer')
+        ->expectsQuestion('Which field do you want to encrypt?', 'phone');
 });
 
 it('fails when no valid fields are available', function () {
@@ -237,7 +139,7 @@ it('fails when the selected field already exists in privacyFields', function () 
     $expectedModels = ['Tests\\Feature\\TmpEncryptModels\\EncryptCustomer'];
 
     $mockModelHelper->shouldReceive('getModels')
-        ->withAnyArgs() // Of specifiek: ->with('some/path') als je een argument verwacht
+        ->withAnyArgs()
         ->andReturn($expectedModels);
 
     $mockModelHelper->shouldReceive('getModelFields')
@@ -322,7 +224,7 @@ it('fails when the selected column does not exist in the database', function () 
 it('stops when the selected field already appears encrypted and the user declines', function () {
     config()->set('data-security.paths', [__DIR__.'/TmpEncryptModels']);
 
-    $customer = \Tests\Feature\TmpEncryptModels\EncryptCustomer::create([
+    $customer = EncryptCustomer::create([
         'name' => 'John Doe',
         'email' => 'john@doe.com',
         'phone' => '0612345678',
@@ -345,7 +247,7 @@ it('stops when the selected field already appears encrypted and the user decline
 it('adds the field to privacyFields when the selected field already appears encrypted and the user confirms', function () {
     config()->set('data-security.paths', [__DIR__.'/TmpEncryptModels']);
 
-    $customer = \Tests\Feature\TmpEncryptModels\EncryptCustomer::create([
+    $customer = EncryptCustomer::create([
         'name' => 'John Doe',
         'email' => 'john@doe.com',
         'phone' => '0612345678',
@@ -368,13 +270,13 @@ it('adds the field to privacyFields when the selected field already appears encr
 it('returns failure when the encryption transaction throws an exception', function () {
     config()->set('data-security.paths', [__DIR__.'/TmpEncryptModels']);
 
-    \Tests\Feature\TmpEncryptModels\FailingEncryptModel::$failOnSave = false;
+    FailingEncryptModel::$failOnSave = false;
 
-    \Tests\Feature\TmpEncryptModels\FailingEncryptModel::create([
+    FailingEncryptModel::create([
         'email' => 'john@doe.com',
     ]);
 
-    \Tests\Feature\TmpEncryptModels\FailingEncryptModel::$failOnSave = true;
+    FailingEncryptModel::$failOnSave = true;
 
     $this->artisan('privacy:encrypt-field')
         ->expectsQuestion('Which model do you want to update?', 'Tests\\Feature\\TmpEncryptModels\\FailingEncryptModel')
@@ -386,7 +288,7 @@ it('returns failure when the encryption transaction throws an exception', functi
 it('encrypts records through the HasPrivacy model path', function () {
     config()->set('data-security.paths', [__DIR__.'/TmpEncryptModels']);
 
-    \Tests\Feature\TmpEncryptModels\NoPrivacyFieldsModel::create([
+    NoPrivacyFieldsModel::create([
         'email' => 'john@doe.com',
     ]);
 
@@ -404,7 +306,7 @@ it('encrypts records through the HasPrivacy model path', function () {
 it('skips null values during the encryption loop', function () {
     config()->set('data-security.paths', [__DIR__.'/TmpEncryptModels']);
 
-    \Tests\Feature\TmpEncryptModels\NoPrivacyFieldsModel::create([
+    NoPrivacyFieldsModel::create([
         'email' => null,
     ]);
 
@@ -426,7 +328,7 @@ it('skips already encrypted values during the encryption loop', function () {
         'email' => Crypt::encryptString('john@doe.com'),
         'created_at' => now(),
         'updated_at' => now(),
-    ],[
+    ], [
         'email' => 'jane.doe@example.com',
         'created_at' => now(),
         'updated_at' => now(),
