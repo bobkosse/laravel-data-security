@@ -7,10 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class PrivateEmail extends Model
 {
-    protected $privacyFields = [
-        'email',
-    ];
-
     use HasPrivacy;
 
     protected $table = 'private_emails';

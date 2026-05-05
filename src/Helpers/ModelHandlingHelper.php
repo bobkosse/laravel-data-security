@@ -117,21 +117,22 @@ class ModelHandlingHelper
             return false;
         }
 
-        $contents = File::get($filePath);
-
-        if ($contents === false) {
+        try {
+            $contents = File::get($filePath);
+        } catch (\ErrorException $e) {
             return false;
         }
 
-        // Check if the model already has a Protect attribute
+        $contents = $this->addProtectImport($contents);
+        $contents = $this->addHasPrivacyImport($contents);
+
+        // Check if the model already has a Protect attribute AFTER imports
         if (preg_match('/#\[Protect\(fields:\s*\[(.*?)\]\)\]/s', $contents, $matches)) {
             $contents = $this->updateProtectAttribute($contents, $field);
         } else {
             $contents = $this->addProtectAttribute($contents, $field);
         }
 
-        $contents = $this->addProtectImport($contents);
-        $contents = $this->addHasPrivacyImport($contents);
         $contents = $this->addHasPrivacyTrait($contents);
 
         File::put($filePath, $contents);
@@ -169,11 +170,13 @@ class ModelHandlingHelper
 
     protected function addProtectAttribute(string $contents, string $field): string
     {
-        $pattern = '/(class\s+\w+)/';
+        $pattern = '/^(\s*)(class\s+\w+)/m';
 
-        return preg_replace_callback($pattern, function (array $matches) use ($field): string {
-            return "#[Protect(fields: ['{$field}'])]\n".$matches[1];
-        }, $contents, 1) ?? $contents;
+        $result = preg_replace_callback($pattern, function (array $matches) use ($field): string {
+            return $matches[1] . "#[Protect(fields: ['{$field}'])]\n" . $matches[1] . $matches[2];
+        }, $contents, 1);
+
+        return $result ?? $contents;
     }
 
     protected function addProtectImport(string $contents): string

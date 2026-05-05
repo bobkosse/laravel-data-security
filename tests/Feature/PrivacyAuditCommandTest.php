@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use BobKosse\DataSecurity\Commands\PrivacyAuditCommand;
+use BobKosse\DataSecurity\Traits\HasPrivacy;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\File;
+use Tests\Feature\TmpEncryptModels\PrivateEmail;
 
 it('scans the directory and finds models and outputs the result', function () {
     $modelsDir = __DIR__.'/../MockModels';
@@ -273,4 +276,33 @@ it('returns a proper error message when no scan directory is specified', functio
         ->expectsOutput('php artisan privacy:audit app/Models')
         ->expectsOutput('to scan the app/Models directory.')
         ->assertExitCode(1);
+});
+
+it('returns empty privacy fields when model has no Protect attribute', function () {
+    $model = new PrivateEmail;
+
+    expect($model->getPrivacyFields())->toBe([]);
+});
+
+it('returns empty privacy fields when model has HasPrivacy trait but no Protect attribute', function () {
+    $command = new class extends PrivacyAuditCommand
+    {
+        public function publicGetPrivacyFieldsFromReflection(\ReflectionClass $reflection): array
+        {
+            return $this->getPrivacyFieldsFromReflection($reflection);
+        }
+    };
+
+    // Maak een testmodel met HasPrivacy trait maar zonder Protect attribute
+    $testModel = new class extends Model
+    {
+        use HasPrivacy;
+
+        protected $table = 'test_table';
+    };
+
+    $reflection = new \ReflectionClass($testModel);
+    $result = $command->publicGetPrivacyFieldsFromReflection($reflection);
+
+    expect($result)->toBe([]);
 });
