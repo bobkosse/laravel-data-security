@@ -10,6 +10,9 @@ use Illuminate\Support\ServiceProvider;
 
 class DataSecurityServiceProvider extends ServiceProvider
 {
+    /**
+     * Bootstrap any application services.
+     */
     public function boot(): void
     {
         $this->commands([
@@ -17,6 +20,9 @@ class DataSecurityServiceProvider extends ServiceProvider
         ]);
     }
 
+    /**
+     * Register any application services.
+     */
     public function register(): void
     {
         if ($this->app->runningInConsole()) {
@@ -30,6 +36,5 @@ class DataSecurityServiceProvider extends ServiceProvider
         $this->app->singleton(ModelHandlingHelper::class);
 
         $this->mergeConfigFrom(__DIR__.'/../config/data-security.php', 'data-security');
-
     }
 }

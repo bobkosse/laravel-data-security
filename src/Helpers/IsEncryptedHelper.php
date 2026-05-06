@@ -38,11 +38,7 @@ class IsEncryptedHelper
         $model = $builder->getModel();
 
         foreach ($model->getPrivacyFields() as $field) {
-            if (! array_key_exists($field, $values) || $values[$field] === null) {
-                continue;
-            }
-
-            if ($this->isAlreadyEncrypted($values[$field])) {
+            if (! array_key_exists($field, $values) || $values[$field] === null || $this->isAlreadyEncrypted($values[$field])) {
                 continue;
             }
 

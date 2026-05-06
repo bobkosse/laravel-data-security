@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Log;
 
 trait HasPrivacy
 {
+    /**
+     * Retrieves the IsEncryptedHelper instance.
+     */
     protected function getIsEncryptedHelper(): IsEncryptedHelper
     {
         return app(IsEncryptedHelper::class);
@@ -26,32 +29,27 @@ trait HasPrivacy
     protected bool $revealed = false;
 
     /**
-     * Boot method for HasPrivacy trait.
-     */
-    protected static function bootHasPrivacy(): void
-    {
-        // Intentionally left empty.
-        // Attribute encryption happens in setAttribute().
-        // Bulk operations are handled by the custom builder.
-    }
-
-    /**
      * Use the privacy-aware Eloquent builder.
+     *
+     * @param  Builder|mixed  $query  The query builder instance.
+     * @return Builder The privacy-aware Eloquent builder instance.
      */
-    public function newEloquentBuilder($query): Builder
+    public function newEloquentBuilder(mixed $query): Builder
     {
         return new PrivacyEloquentBuilder($query, $this->getIsEncryptedHelper());
     }
 
     /**
      * Checks if privacy is active for the model.
+     *
+     * @return bool True if privacy is active, false otherwise.
      */
     protected function isPrivacyActive(): bool
     {
         $privacyActive = $this instanceof Model && get_class($this) !== 'User';
 
         if (! $privacyActive && config('app.debug', false)) {
-            Log::alert('Privacy is not active for this model');
+            Log::alert('Privacy is not active for this model: '.get_class($this));
         }
 
         return $privacyActive;
@@ -59,6 +57,9 @@ trait HasPrivacy
 
     /**
      * Reveals or hides privacy fields for the model.
+     *
+     * @param  bool  $reveal  True to reveal privacy fields, false to hide them.
+     * @return self The current instance for method chaining.
      */
     public function revealPrivacy(bool $reveal = false): self
     {
@@ -69,6 +70,8 @@ trait HasPrivacy
 
     /**
      * Retrieves the privacy fields for the model.
+     *
+     * @return array An array of privacy fields.
      */
     public function getPrivacyFields(): array
     {
@@ -84,8 +87,11 @@ trait HasPrivacy
 
     /**
      * Retrieves the attribute value for the given key.
+     *
+     * @param  mixed  $key  The attribute key to retrieve.
+     * @return mixed The attribute value or null if not found.
      */
-    public function getAttribute($key): mixed
+    public function getAttribute(mixed $key): mixed
     {
         if ($this->isPrivacyActive() && in_array($key, $this->getPrivacyFields(), true)) {
             $value = parent::getAttribute($key);
@@ -110,8 +116,12 @@ trait HasPrivacy
 
     /**
      * Sets the attribute value for the given key.
+     *
+     * @param  mixed  $key  The attribute key to set.
+     * @param  mixed  $value  The attribute value to set.
+     * @return mixed The attribute value.
      */
-    public function setAttribute($key, $value): mixed
+    public function setAttribute(mixed $key, mixed $value): mixed
     {
         if ($this->isPrivacyActive() && in_array($key, $this->getPrivacyFields(), true)) {
             if ($value !== null && ! $this->getIsEncryptedHelper()->isAlreadyEncrypted($value)) {
