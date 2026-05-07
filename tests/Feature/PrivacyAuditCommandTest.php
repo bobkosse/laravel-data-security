@@ -270,12 +270,10 @@ it('returns null when no class name token is found', function () {
     expect($command->publicParseClassName($tokens, 0))->toBeNull();
 });
 
-it('returns a proper error message when no scan directory is specified', function () {
+it('runs on the default app/Models folder when no scan directory is specified', function () {
     $this->artisan('privacy:audit', [])
-        ->expectsOutput('Scan directory not specified. Use:')
-        ->expectsOutput('php artisan privacy:audit app/Models')
-        ->expectsOutput('to scan the app/Models directory.')
-        ->assertExitCode(1);
+        ->expectsOutput('Use standard Laravel models folder: app/Models')
+        ->assertExitCode(0);
 });
 
 it('returns empty privacy fields when model has no Protect attribute', function () {
@@ -293,7 +291,6 @@ it('returns empty privacy fields when model has HasPrivacy trait but no Protect 
         }
     };
 
-    // Maak een testmodel met HasPrivacy trait maar zonder Protect attribute
     $testModel = new class extends Model
     {
         use HasPrivacy;

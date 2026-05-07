@@ -58,12 +58,15 @@ class PrivacyEncryptFieldCommand extends Command
             return self::SUCCESS;
         }
 
+        $this->modelHandlingHelper->addPrivacyFieldToModel($modelName, $field);
+
+        $model = new $modelName;
+
         $rowCounter = $this->runEncryption($modelName, $model, $field);
         if ($rowCounter === -1) {
             return self::FAILURE;
         }
 
-        $this->modelHandlingHelper->addPrivacyFieldToModel($modelName, $field);
         $this->showFinalReport($modelName, $field, $rowCounter);
 
         return self::SUCCESS;
@@ -164,17 +167,16 @@ class PrivacyEncryptFieldCommand extends Command
      * @param  object  $model  The model instance to encrypt the field in.
      * @param  string  $field  The name of the field to encrypt.
      * @return int The number of rows encrypted.
-     *
-     * @TODO: There is something wrong with the encryption process. It only enctypts the fields on the first run. On
-     *        new runs it only change the model code, but doesn't any encryption. Need to investigate why this is
-     *        happening.
      */
     private function runEncryption(string $model_name, $model, string $field): int
     {
         $row_counter = 0;
+
+        $privacyFields = $this->modelHandlingHelper->getPrivacyFields($model_name);
+
         try {
-            DB::transaction(function () use (&$row_counter, $model_name, $model, $field) {
-                $model::query()->chunkById(100, function ($rows) use (&$row_counter, $model_name, $field) {
+            DB::transaction(function () use (&$row_counter, $model, $field) {
+                $model::query()->chunkById(100, function ($rows) use (&$row_counter, $field) {
                     foreach ($rows as $row) {
                         $value = $row->getAttribute($field);
 
@@ -182,13 +184,8 @@ class PrivacyEncryptFieldCommand extends Command
                             continue;
                         }
 
-                        if ($this->modelHandlingHelper->modelUsesHasPrivacy($model_name)) {
-                            $row->setAttribute($field, $value);
-                        } else {
-                            $row->setAttribute($field, Crypt::encryptString((string) $value));
-                            $row_counter++;
-                        }
-
+                        $row->setAttribute($field, Crypt::encryptString((string) $value));
+                        $row_counter++;
                         $row->save();
                     }
                 });

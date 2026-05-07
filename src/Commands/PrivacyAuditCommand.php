@@ -22,7 +22,7 @@ class PrivacyAuditCommand extends Command
     /**
      * @var string
      */
-    protected $description = 'Overview of all Eloquent models and their privacy settings';
+    protected $description = 'Overview of all Eloquent models and their privacy fields. Use privacy:audit [custom models directory] or just privacy:audit to scan the app/Models directory.';
 
     /**
      * Execute the console command.
@@ -32,11 +32,8 @@ class PrivacyAuditCommand extends Command
         $scan = $this->argument('scan');
 
         if (empty($scan)) {
-            $this->error('Scan directory not specified. Use:');
-            $this->error('php artisan privacy:audit app/Models');
-            $this->error('to scan the app/Models directory.');
-
-            return self::FAILURE;
+            $this->info('Use standard Laravel models folder: app/Models');
+            $scan = 'app/Models';
         }
 
         return $this->handleAction($scan);

@@ -9,3 +9,4 @@
 *.swo
 /.phpunit.cache
 /--cache-result
+/coverage
