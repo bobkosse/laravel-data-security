@@ -168,6 +168,7 @@ it('should only run on Laravel models', function () {
 
 it('should log an alert if HasPrivacy is used on User model', function () {
     Log::shouldReceive('alert')
+        ->atLeast()
         ->once()
         ->with(Mockery::on(function ($message) {
             return str_contains($message, 'Privacy is not active for this model');

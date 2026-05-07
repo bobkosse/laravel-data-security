@@ -566,3 +566,15 @@ class TestModel extends \Illuminate\Database\Eloquent\Model {
         expect($result)->toMatch('/namespace Tests\\\\TmpHelperModels;\s*use BobKosse\\\\DataSecurity\\\\Traits\\\\HasPrivacy;\s*\s*class TestModel/');
     });
 });
+
+it('returns true when model uses HasPrivacy trait', function () {
+    $result = $this->helper->modelUsesHasPrivacy('Tests\\MockModels\\ProtectedModel');
+
+    expect($result)->toBeTrue();
+});
+
+it('returns false when model does not use HasPrivacy trait', function () {
+    $result = $this->helper->modelUsesHasPrivacy('Tests\\MockModels\\UnprotectedModel');
+
+    expect($result)->toBeFalse();
+});
