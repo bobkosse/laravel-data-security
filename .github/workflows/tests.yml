@@ -34,6 +34,11 @@ jobs:
       - name: Install Dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
+      - name: Create SQLite Database
+        run: |
+          mkdir -p tests
+          touch tests/testing.sqlite
+
       - name: Execute Pint
         run: ./vendor/bin/pint
 
@@ -41,5 +46,5 @@ jobs:
         run: ./vendor/bin/pest
         env:
           DB_CONNECTION: sqlite
-          DB_DATABASE: ":memory:"
+          DB_DATABASE: tests/testing.sqlite
           APP_KEY: base64:u6p8f6N6O87mO9D6S6T6U6V6W6X6Y6Z6a6b6c6d6e6f=

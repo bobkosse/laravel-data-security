@@ -9,6 +9,8 @@ This package provides a lightweight solution for handling sensitive data within 
 - **Duplicate encryption protection:** Prevents already encrypted values from being encrypted again.
 - **Clear decryption errors:** Throws a `PrivacyDecryptionException` when encrypted values cannot be decrypted.
 - **Privacy audit command:** Scans your models and reports which ones use the privacy trait and which privacy fields they define.
+- **Interactive encryption command:** Encrypt existing data for newly added privacy fields.
+- **Attribute-based configuration:** Use PHP 8 attributes for cleaner model definitions.
 
 ## Installation
 1. Add the package to your project.
@@ -16,28 +18,24 @@ This package provides a lightweight solution for handling sensitive data within 
 
 ## Usage
 ### 1. Prepare your model
-Add the `HasPrivacy` trait to any Eloquent model containing sensitive data. Define the fields that should be protected using a `$privacyFields` array.
+Add the `HasPrivacy` trait to any Eloquent model containing sensitive data. Define the fields that should be protected using the `#[Protect]` attribute.
 
 ```php
+use BobKosse\DataSecurity\Attributes\Protect;
 use BobKosse\DataSecurity\Traits\HasPrivacy;
 use Illuminate\Database\Eloquent\Model;
 
+#[Protect(fields: ['phone_number', 'address', 'social_security_number'])]
 class PatientProfile extends Model
 {
   use HasPrivacy;
-
-  protected $privacyFields = [
-    'phone_number',
-    'address',
-    'social_security_number'
-  ];
 }
 ```
 
 ### 2. How it works
 
 #### Saving data
-When a value is assigned to a field listed in `$privacyFields`, the trait automatically encrypts it before it reaches the database.
+When a value is assigned to a field listed in the `#[Protect]` attribute, the trait automatically encrypts it before it reaches the database.
 
 This works with:
 
@@ -91,23 +89,32 @@ Supported Eloquent-based writes include:
 - `upsert()`
 - `where()->update()`
 
-## Privacy Audit Command
+## Commands
 
+### Privacy Audit Command
 The package includes a console command that scans a directory for Eloquent models and reports which ones use the privacy trait.
-
-### Run the audit:
 
 ```bash
 php artisan privacy:audit app/Models
 ```
 
-### Output
-
 The command shows:
-
 - **Model:** the full class name of the model
 - **Has Privacy Trait:** whether the trait is implemented
 - **Privacy Fields:** the fields currently configured for encryption
+
+### Privacy Encrypt Field Command
+When you add privacy protection to an existing field that already contains plain-text data, you can use this command to encrypt it.
+
+```bash
+php artisan privacy:encrypt-field
+```
+
+This interactive command will:
+1. Ask you to select a model.
+2. Ask you to select a field from that model.
+3. Automatically update the model file to add the `#[Protect]` attribute and `HasPrivacy` trait if they are missing.
+4. Encrypt all existing plain-text values for that field in the database.
 
 ## Important notes
 
