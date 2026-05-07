@@ -21,7 +21,7 @@ abstract class TestCase extends OTestCase
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite', [
             'driver' => 'sqlite',
-            'database' => base_path('tests/testing.sqlite'),
+            'database' => ':memory:',
             'prefix' => '',
         ]);
     }

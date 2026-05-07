@@ -27,17 +27,12 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3x'
+          php-version: '8.3'
           extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, intl, gd, exif, iconv
           coverage: none
 
       - name: Install Dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Create SQLite Database
-        run: |
-          mkdir -p tests
-          touch tests/testing.sqlite
 
       - name: Execute Pint
         run: ./vendor/bin/pint
@@ -45,6 +40,4 @@ jobs:
       - name: Execute Tests
         run: ./vendor/bin/pest
         env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: tests/testing.sqlite
           APP_KEY: base64:u6p8f6N6O87mO9D6S6T6U6V6W6X6Y6Z6a6b6c6d6e6f=
