@@ -9,6 +9,9 @@ use Throwable;
 
 class PrivacyDecryptionException extends RuntimeException
 {
+    /**
+     * Create a new PrivacyDecryptionException instance.
+     */
     public static function forAttribute(string $attribute, string $modelClass, ?Throwable $previous = null): self
     {
         return new self(
