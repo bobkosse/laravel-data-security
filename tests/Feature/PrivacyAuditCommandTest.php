@@ -35,9 +35,10 @@ it('should give a clear message if the path is not correct ', function () {
 
 it('skips files that are not php files', function () {
     $tempDir = __DIR__.'/tmp-scan';
+    $content = '# not a php file';
 
     File::ensureDirectoryExists($tempDir);
-    File::put($tempDir.'/README.md', '# not a php file');
+    File::put($tempDir.'/README.md', $content);
 
     $this->artisan('privacy:audit', [
         'scan' => $tempDir,
@@ -50,8 +51,10 @@ it('skips files that are not php files', function () {
 
 it('skips php files without a class', function () {
     $tempDir = __DIR__.'/tmp-scan';
+    $content = "<?php\n\nnamespace Tests\\Tmp;\n";
+
     File::ensureDirectoryExists($tempDir);
-    File::put($tempDir.'/NoClass.php', "<?php\n\nnamespace Tests\\Tmp;\n");
+    File::put($tempDir.'/NoClass.php', $content);
 
     $this->artisan('privacy:audit', [
         'scan' => $tempDir,
@@ -64,17 +67,16 @@ it('skips php files without a class', function () {
 
 it('skips php files with a class that is not autoloadable', function () {
     $tempDir = sys_get_temp_dir().'/privacy-audit-'.uniqid();
-    File::ensureDirectoryExists($tempDir);
-
-    File::put($tempDir.'/GhostModel.php', <<<'PHP'
-<?php
+    $content = '<?php
 
 namespace Tests\Tmp;
 
 class GhostModel
 {
-}
-PHP);
+}';
+
+    File::ensureDirectoryExists($tempDir);
+    File::put($tempDir.'/GhostModel.php', $content);
 
     $this->artisan('privacy:audit', [
         'scan' => $tempDir,
@@ -89,17 +91,16 @@ it('skips php files with classes that are not eloquent models', function () {
     $tempDir = sys_get_temp_dir().'/privacy-audit-'.uniqid();
     File::ensureDirectoryExists($tempDir);
 
-    $filePath = $tempDir.'/PlainClass.php';
-
-    File::put($filePath, <<<'PHP'
-<?php
+    $content = '<?php
 
 namespace Tests\Tmp;
 
 class PlainClass
 {
-}
-PHP);
+}';
+    $filePath = $tempDir.'/PlainClass.php';
+
+    File::put($filePath, $content);
 
     require_once $filePath;
 

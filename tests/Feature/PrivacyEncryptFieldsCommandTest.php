@@ -17,7 +17,6 @@ use Tests\Feature\TmpEncryptModels\FailingEncryptModel;
 use Tests\Feature\TmpEncryptModels\NoPrivacyFieldsModel;
 
 beforeEach(function () {
-    // Definieer model bestanden die gebackupt moeten worden
     $modelFiles = [
         __DIR__.'/TmpEncryptModels/EncryptCustomer.php',
         __DIR__.'/TmpEncryptModels/FailingEncryptModel.php',
@@ -27,7 +26,6 @@ beforeEach(function () {
         __DIR__.'/TmpEncryptModels/EncryptPatient.php',
     ];
 
-    // Maak backups en sla ze op in de test context
     $this->originalModelFiles = [];
     foreach ($modelFiles as $modelFile) {
         if (file_exists($modelFile)) {
@@ -56,7 +54,6 @@ beforeEach(function () {
         $table->string('email')->nullable();
         $table->timestamps();
     });
-
     Schema::create('encrypt_customers', function (Blueprint $table) {
         $table->id();
         $table->string('name')->nullable();
@@ -74,7 +71,6 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    // Herstel alle model bestanden naar hun originele staat
     if (isset($this->originalModelFiles)) {
         foreach ($this->originalModelFiles as $modelFile => $originalContent) {
             if (file_exists($modelFile)) {
@@ -83,10 +79,8 @@ afterEach(function () {
         }
     }
 
-    // Reset static properties
     FailingEncryptModel::$failOnSave = false;
 
-    // Clear database tabellen
     if (Schema::hasTable('encrypt_customers')) {
         DB::table('encrypt_customers')->truncate();
     }
@@ -100,7 +94,6 @@ afterEach(function () {
         DB::table('private_emails')->truncate();
     }
 
-    // Clear Mockery mocks
     Mockery::close();
 });
 
@@ -151,7 +144,7 @@ it('fails when the selected field already exists in privacyFields', function () 
         ->andReturn(['name', 'phone']);
 
     $mockModelHelper->shouldReceive('fieldAlreadyExistsInPrivacyFields')
-        ->withAnyArgs() // Of specifieker: ->with('TestClass', 'fieldName')
+        ->withAnyArgs()
         ->andReturn(true);
 
     $command = new class($mockModelHelper, $mockIsEncryptedHelper) extends PrivacyEncryptFieldCommand
